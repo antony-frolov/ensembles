@@ -30,8 +30,8 @@ class RandomForestMSE:
         self.feature_subsample_size = feature_subsample_size
 
         self.estimator = lambda: DecisionTreeRegressor(max_depth=max_depth, **trees_parameters)
-        self.estimators = []
 
+        self.estimators = None
         self.feature_subsamples = None
 
     def get_params(self):
@@ -54,6 +54,7 @@ class RandomForestMSE:
             Array of size n_val_objects
         """
 
+        self.estimators = []
         self.feature_subsamples = []
         hist = {'n_estimators': [], 'time': [], 'train_rmse': []}
         if X_val is not None and y_val is not None:
@@ -135,10 +136,10 @@ class GradientBoostingMSE:
             feature_subsample_size = 1 / 3
         self.feature_subsample_size = feature_subsample_size
 
-        self.estimators = []
         self.estimator = lambda: DecisionTreeRegressor(max_depth=max_depth, **trees_parameters)
 
-        self.weights = []
+        self.estimators = None
+        self.weights = None
 
     def get_params(self):
         return {'n_estimators': self.n_estimators,
@@ -155,6 +156,8 @@ class GradientBoostingMSE:
             Array of size n_objects
         """
 
+        self.estimators = []
+        self.weights = []
         f = np.zeros((X.shape[0],))
         hist = {'n_estimators': [], 'time': [], 'train_rmse': []}
         if X_val is not None and y_val is not None:
