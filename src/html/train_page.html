@@ -4,6 +4,9 @@
 
 <div class="container">
     <h1>Training page</h1>
+    {% if error %}
+        <p class=error><strong>Error:</strong> {{ error }}</p>
+    {% endif %}
     <h3>Model parameters</h3>
     {% for param, value in params_dict.items() %}
         <div>

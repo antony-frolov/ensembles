@@ -11,7 +11,7 @@
             {{ param }}: {{ value }}
         </div>
     {% endfor %}
-    <div><div><a href="{{ url_for('model_creation_page') }}">Create new model</a></div></div>
+    <div><a href="{{ url_for('model_creation_page') }}">Create new model</a></div>
     </p>
     <h3>Train info</h3>
     <p>
@@ -25,6 +25,9 @@
     <p><a href="{{ url_for('eval_page') }}">Go to evaluation page</a></p>
 
     <h3>Make prediction</h3>
+    {% if error %}
+        <p class=error><strong>Error:</strong> {{ error }}</p>
+    {% endif %}
     {{ wtf.quick_form(test_form) }}
 
 </div>

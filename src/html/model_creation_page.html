@@ -6,7 +6,9 @@
       <h1>Model creation page</h1>
 
       <h3>Choose model and parameters</h3>
-
+      {% if error %}
+      <p class=error><strong>Error:</strong> {{ error }}</p>
+      {% endif %}
       {{ wtf.quick_form(model_form) }}
 
 </div>

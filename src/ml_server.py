@@ -63,99 +63,127 @@ hist = None
 @app.route('/', methods=['GET', 'POST'])
 def model_creation_page():
     model_form = ModelForm()
-
+    error = None
     if model_form.validate_on_submit():
-        model_params = {'n_estimators': int(model_form.n_estimators.data),
-                        'max_depth': int(model_form.max_depth.data),
-                        'feature_subsample_size': int(model_form.feature_subsample_size.data)}
-        model_type = model_form.model_type.data
-        global model
-        if model_type == 'rf':
-            model = RandomForestMSE(**model_params)
-        elif model_type == 'gb':
-            if not model_form.learning_rate.data:
-                raise ValueError()
-            model_params['learning_rate'] = float(model_form.learning_rate.data)
-            model = GradientBoostingMSE(**model_params)
-        else:
-            raise ValueError('Invalid model type')
-        flash('Hi, buddy!')
-        return redirect(url_for('train_page'))
-    return render_template('model_creation_page.html', model_form=model_form)
+        try:
+            n_estimators = int(model_form.n_estimators.data)
+            max_depth = int(model_form.max_depth.data)
+            feature_subsample_size = int(model_form.feature_subsample_size.data)
+            if n_estimators <= 0 or max_depth <= 0 or feature_subsample_size <= 0:
+                raise ValueError('Parameters must be positive')
+
+            model_params = {'n_estimators': n_estimators, 'max_depth': max_depth,
+                            'feature_subsample_size': feature_subsample_size}
+
+            model_type = model_form.model_type.data
+            global model
+            if model_type == 'rf':
+                model = RandomForestMSE(**model_params)
+            elif model_type == 'gb':
+                if not model_form.learning_rate.data:
+                    raise ValueError('No learning rate for Gradient Boosting')
+                learning_rate = float(model_form.learning_rate.data)
+                if learning_rate <= 0:
+                    ValueError('Learning rate must be positive')
+                model_params['learning_rate'] = learning_rate
+                model = GradientBoostingMSE(**model_params)
+            else:
+                raise ValueError('Invalid model type')
+            return redirect(url_for('train_page'))
+        except Exception as e:
+            error = e
+    return render_template('model_creation_page.html', model_form=model_form, error=(repr(error) if error else None))
 
 
 @app.route('/model', methods=['GET', 'POST'])
 def train_page():
+    if not model:
+        return render_template('no_model_page.html')
     train_val_form = TrainValForm()
+    error = None
     if train_val_form.validate_on_submit():
-        global train_dataset_name
-        train_dataset_name = train_val_form.train_file.data.filename
-        train_data = pd.read_csv(train_val_form.train_file.data)
+        try:
+            global train_dataset_name
+            train_dataset_name = train_val_form.train_file.data.filename
+            train_data = pd.read_csv(train_val_form.train_file.data)
 
-        num_features = train_val_form.num_features.data.split(', ') if train_val_form.num_features.data else []
-        bin_features = train_val_form.bin_features.data.split(', ') if train_val_form.bin_features.data else []
-        cat_features = train_val_form.cat_features.data.split(', ') if train_val_form.cat_features.data else []
+            num_features = train_val_form.num_features.data.split(', ') if train_val_form.num_features.data else []
+            bin_features = train_val_form.bin_features.data.split(', ') if train_val_form.bin_features.data else []
+            cat_features = train_val_form.cat_features.data.split(', ') if train_val_form.cat_features.data else []
 
-        global data_transformer
-        if not num_features and not bin_features and not cat_features:
-            data_transformer = DataPreprocessor(mode='auto')
-        else:
-            data_transformer = DataPreprocessor('manual', num_features, bin_features, cat_features)
+            global data_transformer
+            if not num_features and not bin_features and not cat_features:
+                data_transformer = DataPreprocessor(mode='auto')
+            else:
+                data_transformer = DataPreprocessor('manual', num_features, bin_features, cat_features)
 
-        y_train = train_data['target'].to_numpy()
+            y_train = train_data['target'].to_numpy()
 
-        train_data = train_data.drop(columns=['target'])
-        X_train = data_transformer.fit_transform(train_data)
+            train_data = train_data.drop(columns=['target'])
+            X_train = data_transformer.fit_transform(train_data)
 
-        global hist
-        global val_dataset_name
-        global val_fraction
-        if train_val_form.val_file.data:
-            val_dataset_name = train_val_form.val_file.data.filename
-            val_fraction = 1
-            val_data = pd.read_csv(train_val_form.val_file.data)
-            y_val = val_data['target'].to_numpy()
-            val_data = val_data.drop(columns=['target'])
-            X_val = data_transformer.transform(val_data)
-            hist = model.fit(X_train, y_train, X_val, y_val)
-        elif train_val_form.val_fraction.data:
-            val_dataset_name = train_dataset_name
-            val_fraction = float(train_val_form.val_fraction.data)
-            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_fraction,
-                                                              random_state=0)
-            hist = model.fit(X_train, y_train, X_val, y_val)
-        else:
-            val_dataset_name = 'No validation dataset'
-            val_fraction = None
-            hist = model.fit(X_train, y_train)
+            global hist
+            global val_dataset_name
+            global val_fraction
+            if train_val_form.val_file.data:
+                val_dataset_name = train_val_form.val_file.data.filename
+                val_fraction = 1
+                val_data = pd.read_csv(train_val_form.val_file.data)
+                y_val = val_data['target'].to_numpy()
+                val_data = val_data.drop(columns=['target'])
+                X_val = data_transformer.transform(val_data)
+                hist = model.fit(X_train, y_train, X_val, y_val)
+            elif train_val_form.val_fraction.data:
+                val_dataset_name = train_dataset_name
+                val_fraction = float(train_val_form.val_fraction.data)
+                if val_fraction < 0 or val_fraction >= 1:
+                    raise ValueError('Validation fraction must be between 0 and 1')
+                X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_fraction,
+                                                                  random_state=0)
+                hist = model.fit(X_train, y_train, X_val, y_val)
+            else:
+                val_dataset_name = 'No validation dataset'
+                val_fraction = None
+                hist = model.fit(X_train, y_train)
 
-        return redirect(url_for('main_page'))
+            return redirect(url_for('main_page'))
+        except Exception as e:
+            error = e
     params = {'model_class': type(model).__name__}
     params.update(model.get_params())
     return render_template('train_page.html', params_dict=params,
-                           train_val_form=train_val_form)
+                           train_val_form=train_val_form, error=(repr(error) if error else None))
 
 
 @app.route('/trained_model', methods=['GET', 'POST'])
 def main_page():
+    if not model:
+        return render_template('no_model_page.html')
     test_form = TestForm()
+    error = None
     if test_form.validate_on_submit():
+        try:
 
-        test_data = pd.read_csv(test_form.test_file.data)
-        X_test = data_transformer.transform(test_data)
-        y_pred = model.predict(X_test)
-        np.savetxt('prediction.txt', y_pred, delimiter='\n')
+            test_data = pd.read_csv(test_form.test_file.data)
+            X_test = data_transformer.transform(test_data)
+            y_pred = model.predict(X_test)
+            np.savetxt('prediction.txt', y_pred, delimiter='\n')
 
-        return send_file('prediction.txt', as_attachment=True)
+            return send_file('prediction.txt', as_attachment=True)
+        except Exception as e:
+            error = e
     params = {'model_class': type(model).__name__}
     params.update(model.get_params())
     return render_template('main_page.html', params_dict=params,
                            test_form=test_form, train_dataset_name=train_dataset_name,
-                           val_dataset_name=val_dataset_name, val_fraction=str(val_fraction))
+                           val_dataset_name=val_dataset_name, val_fraction=str(val_fraction),
+                           error=(repr(error) if error else None))
 
 
 @app.route('/evaluation', methods=['GET', 'POST'])
 def eval_page():
+    if not model:
+        return render_template('no_model_page.html')
     # hist = {'train_rmse': [1, 2, 3], 'val_rmse': [2, 3, 4], 'time': [1, 2, 3], 'n_estimators': [1, 2, 3]}
 
     fig = plotly.subplots.make_subplots(rows=2, cols=1,
