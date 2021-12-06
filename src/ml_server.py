@@ -1,17 +1,20 @@
-from flask import Flask, url_for
+from flask import Flask, url_for, render_template, redirect, send_file, flash
 from flask_wtf import FlaskForm
-from flask import render_template, redirect, send_file
 from flask_bootstrap import Bootstrap
 from wtforms.validators import DataRequired
 from wtforms import StringField, SubmitField, SelectField, FileField
 
 import pandas as pd
 import numpy as np
+import plotly
+import plotly.subplots
+import plotly.graph_objects as go
 
 from ensembles import RandomForestMSE, GradientBoostingMSE
 from utils import DataPreprocessor
 
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
 
 
 app = Flask(__name__, template_folder='html')
@@ -39,6 +42,7 @@ class TrainValForm(FlaskForm):
     bin_features = StringField('Binary features')
     cat_features = StringField('Categorical features')
     train_file = FileField('Train file', validators=[DataRequired()])
+    val_fraction = StringField('Validation fraction')
     val_file = FileField('Validation file')
     submit = SubmitField('Train!')
 
@@ -51,7 +55,9 @@ class TestForm(FlaskForm):
 model = None
 data_transformer = None
 train_dataset_name = None
-scores = None
+val_dataset_name = None
+val_fraction = None
+hist = None
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -67,13 +73,13 @@ def model_creation_page():
         if model_type == 'rf':
             model = RandomForestMSE(**model_params)
         elif model_type == 'gb':
-            if not model_type.learning_rate.data:
+            if not model_form.learning_rate.data:
                 raise ValueError()
-            model_params['learning_rate'] = float(model_type.learning_rate.data)
+            model_params['learning_rate'] = float(model_form.learning_rate.data)
             model = GradientBoostingMSE(**model_params)
         else:
             raise ValueError('Invalid model type')
-
+        flash('Hi, buddy!')
         return redirect(url_for('train_page'))
     return render_template('model_creation_page.html', model_form=model_form)
 
@@ -101,33 +107,101 @@ def train_page():
         train_data = train_data.drop(columns=['target'])
         X_train = data_transformer.fit_transform(train_data)
 
-        global scores
+        global hist
+        global val_dataset_name
+        global val_fraction
         if train_val_form.val_file.data:
+            val_dataset_name = train_val_form.val_file.data.filename
+            val_fraction = 1
             val_data = pd.read_csv(train_val_form.val_file.data)
             y_val = val_data['target'].to_numpy()
             val_data = val_data.drop(columns=['target'])
             X_val = data_transformer.transform(val_data)
-            scores = model.fit(X_train, y_train, X_val, y_val)
+            hist = model.fit(X_train, y_train, X_val, y_val)
+        elif train_val_form.val_fraction.data:
+            val_dataset_name = train_dataset_name
+            val_fraction = float(train_val_form.val_fraction.data)
+            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_fraction,
+                                                              random_state=0)
+            hist = model.fit(X_train, y_train, X_val, y_val)
         else:
-            scores = model.fit(X_train, y_train)
+            val_dataset_name = 'No validation dataset'
+            val_fraction = None
+            hist = model.fit(X_train, y_train)
 
         return redirect(url_for('main_page'))
-    return render_template('train_page.html', params_dict=model.get_params(), train_val_form=train_val_form)
+    params = {'model_class': type(model).__name__}
+    params.update(model.get_params())
+    return render_template('train_page.html', params_dict=params,
+                           train_val_form=train_val_form)
 
 
 @app.route('/trained_model', methods=['GET', 'POST'])
 def main_page():
     test_form = TestForm()
     if test_form.validate_on_submit():
+
         test_data = pd.read_csv(test_form.test_file.data)
         X_test = data_transformer.transform(test_data)
         y_pred = model.predict(X_test)
         np.savetxt('prediction.txt', y_pred, delimiter='\n')
+
         return send_file('prediction.txt', as_attachment=True)
-    return render_template('main_page.html', params_dict=model.get_params(),
-                           test_form=test_form, train_dataset_name=train_dataset_name)
+    params = {'model_class': type(model).__name__}
+    params.update(model.get_params())
+    return render_template('main_page.html', params_dict=params,
+                           test_form=test_form, train_dataset_name=train_dataset_name,
+                           val_dataset_name=val_dataset_name, val_fraction=str(val_fraction))
 
 
 @app.route('/evaluation', methods=['GET', 'POST'])
 def eval_page():
-    return render_template('eval_page.html', scores=scores)
+    # hist = {'train_rmse': [1, 2, 3], 'val_rmse': [2, 3, 4], 'time': [1, 2, 3], 'n_estimators': [1, 2, 3]}
+
+    fig = plotly.subplots.make_subplots(rows=2, cols=1,
+                                        subplot_titles=['Train and val RMSE for each iteration',
+                                                        'Total time for each iteration'],
+                                        vertical_spacing=0.1)
+
+    fig.add_trace(go.Scatter(
+        x=hist['n_estimators'],
+        y=hist['train_rmse'],
+        name='Train'
+    ), row=1, col=1)
+    if 'val_rmse' in hist:
+        fig.add_trace(go.Scatter(
+            x=hist['n_estimators'],
+            y=hist['val_rmse'],
+            name='Validation'
+        ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=hist['n_estimators'],
+        y=hist['time'],
+        name='Time'
+    ), row=2, col=1)
+
+    fig.update_xaxes(
+        title_text='Iteration',
+        row=1, col=1)
+
+    fig.update_yaxes(
+        title_text='RMSE',
+        row=1, col=1)
+
+    fig.update_xaxes(
+        title_text='Iteration',
+        row=2, col=1)
+
+    fig.update_yaxes(
+        title_text='Time (s)',
+        row=2, col=1)
+
+    fig.update_layout(
+        width=1200, height=1200
+    )
+
+    return render_template('eval_page.html', graph_div=fig.to_html(full_html=False),
+                           train_rmse=f"{hist['train_rmse'][-1]:.2f}",
+                           test_rmse=f"{hist['val_rmse'][-1]:.2f}",
+                           time=f"{hist['time'][-1]:.2f}")

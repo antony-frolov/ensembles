@@ -3,20 +3,25 @@
 {% block content %}
 
 <div class="container">
-
-    <h3>Model parameters</h3>
+    <h1>Main page</h1>
+    <h3>Model info</h3>
     <p>
     {% for param, value in params_dict.items() %}
         <div>
             {{ param }}: {{ value }}
         </div>
     {% endfor %}
+    <div><div><a href="{{ url_for('model_creation_page') }}">Create new model</a></div></div>
     </p>
+    <h3>Train info</h3>
     <p>
-        Train dataset: {{ train_dataset_name }} <a href="{{ url_for('train_page') }}">Go to train page</a>
+        <div>Train dataset: {{ train_dataset_name }}</div>
+        <div>Validation dataset: {{ val_dataset_name }}</div>
+        <div>Validation fraction: {{ val_fraction }}</div>
+        <div><a href="{{ url_for('train_page') }}">Go to train page</a></div>
     </p>
     
-    <h3>Show evaluation statistics</h3>
+    <h3>Evaluation statistics</h3>
     <p><a href="{{ url_for('eval_page') }}">Go to evaluation page</a></p>
 
     <h3>Make prediction</h3>
