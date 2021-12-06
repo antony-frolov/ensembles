@@ -33,6 +33,11 @@ class RandomForestMSE:
 
         self.feature_subsamples = None
 
+    def get_params(self):
+        return {'n_estimators': self.n_estimators,
+                'max_depth': self.max_depth,
+                'feature_subsample_size': self.feature_subsample_size}
+
     def fit(self, X, y, X_val=None, y_val=None):
         """
         X : numpy ndarray
@@ -49,7 +54,7 @@ class RandomForestMSE:
         """
 
         self.feature_subsamples = []
-        scores = []
+        scores = {'train': [], 'val': []}
 
         for i in range(self.n_estimators):
             estimator = self.estimator()
@@ -67,15 +72,17 @@ class RandomForestMSE:
 
             self.estimators.append(estimator)
 
+            y_pred = self.predict(X)
+            scores['train'].append(mse(y, y_pred))
+
             if X_val is not None and y_val is not None:
                 y_pred = self.predict(X_val)
-                scores.append(mse(y_val, y_pred))
+                scores['val'].append(mse(y_val, y_pred))
 
             print(f'\rEstimator {i+1}/{self.n_estimators} trained', end='')
         print()
 
-        if X_val is not None and y_val is not None:
-            return scores
+        return scores
 
     def predict(self, X):
         """
@@ -127,6 +134,12 @@ class GradientBoostingMSE:
 
         self.weights = []
 
+    def get_params(self):
+        return {'n_estimators': self.n_estimators,
+                'learning_rate': self.learning_rate,
+                'max_depth': self.max_depth,
+                'feature_subsample_size': self.feature_subsample_size}
+
     def fit(self, X, y, X_val=None, y_val=None):
         """
         X : numpy ndarray
@@ -137,7 +150,7 @@ class GradientBoostingMSE:
         """
 
         f = np.zeros((X.shape[0],))
-        scores = []
+        scores = {'train': [], 'val': []}
 
         for i in range(self.n_estimators):
             estimator = self.estimator()
@@ -150,15 +163,17 @@ class GradientBoostingMSE:
 
             self.estimators.append(estimator)
 
+            y_pred = self.predict(X)
+            scores['train'].append(mse(y, y_pred))
+
             if X_val is not None and y_val is not None:
                 y_pred = self.predict(X_val)
-                scores.append(mse(y_val, y_pred))
+                scores['val'].append(mse(y_val, y_pred))
 
             print(f'\rEstimator {i+1}/{self.n_estimators} trained', end='')
         print()
 
-        if X_val is not None and y_val is not None:
-            return scores
+        return scores
 
     def predict(self, X):
         """
