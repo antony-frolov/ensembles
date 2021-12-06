@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.optimize import minimize_scalar
 from sklearn.tree import DecisionTreeRegressor
+from timeit import default_timer
 
-from metrics import mse
+from metrics import rmse
 
 
 class RandomForestMSE:
@@ -54,8 +55,11 @@ class RandomForestMSE:
         """
 
         self.feature_subsamples = []
-        scores = {'train': [], 'val': []}
+        hist = {'n_estimators': [], 'time': [], 'train_rmse': []}
+        if X_val is not None and y_val is not None:
+            hist['val_rmse'] = []
 
+        start_time = default_timer()
         for i in range(self.n_estimators):
             estimator = self.estimator()
             features = np.arange((X.shape[1]))
@@ -73,16 +77,18 @@ class RandomForestMSE:
             self.estimators.append(estimator)
 
             y_pred = self.predict(X)
-            scores['train'].append(mse(y, y_pred))
-
+            hist['train_rmse'].append(rmse(y, y_pred))
+            hist['n_estimators'].append(i+1)
             if X_val is not None and y_val is not None:
                 y_pred = self.predict(X_val)
-                scores['val'].append(mse(y_val, y_pred))
+                hist['val_rmse'].append(rmse(y_val, y_pred))
+
+            hist['time'].append(default_timer() - start_time)
 
             print(f'\rEstimator {i+1}/{self.n_estimators} trained', end='')
         print()
 
-        return scores
+        return hist
 
     def predict(self, X):
         """
@@ -150,8 +156,11 @@ class GradientBoostingMSE:
         """
 
         f = np.zeros((X.shape[0],))
-        scores = {'train': [], 'val': []}
+        hist = {'n_estimators': [], 'time': [], 'train_rmse': []}
+        if X_val is not None and y_val is not None:
+            hist['val_rmse'] = []
 
+        start_time = default_timer()
         for i in range(self.n_estimators):
             estimator = self.estimator()
             gradient = 2 * (f - y)
@@ -164,16 +173,18 @@ class GradientBoostingMSE:
             self.estimators.append(estimator)
 
             y_pred = self.predict(X)
-            scores['train'].append(mse(y, y_pred))
-
+            hist['train_rmse'].append(rmse(y, y_pred))
+            hist['n_estimators'].append(i+1)
             if X_val is not None and y_val is not None:
                 y_pred = self.predict(X_val)
-                scores['val'].append(mse(y_val, y_pred))
+                hist['val_rmse'].append(rmse(y_val, y_pred))
+
+            hist['time'].append(default_timer() - start_time)
 
             print(f'\rEstimator {i+1}/{self.n_estimators} trained', end='')
         print()
 
-        return scores
+        return hist
 
     def predict(self, X):
         """
