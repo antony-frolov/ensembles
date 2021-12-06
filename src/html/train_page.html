@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+
+    <h3>Model parameters</h3>
+    {% for param, value in params_dict.items() %}
+        <div>
+            {{ param }}: {{ value }}
+        </div>
+    {% endfor %}
+    
+    <h3>Train model</h3>
+    <b>
+        <p>Input format: feature_name_1, feature_name_2, feature_name_3, ...</p>
+        <p>Leave feature fields blank for auto preprocessing</p>
+    </b>
+
+    {{ wtf.quick_form(train_val_form) }}
+
+</div>
+
+{% endblock %}

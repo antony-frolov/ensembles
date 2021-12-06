@@ -6,9 +6,12 @@ from wtforms.validators import DataRequired
 from wtforms import StringField, SubmitField, SelectField, FileField
 
 import pandas as pd
+import numpy as np
 
 from ensembles import RandomForestMSE, GradientBoostingMSE
 from utils import DataPreprocessor
+
+from sklearn.metrics import mean_squared_error
 
 
 app = Flask(__name__, template_folder='html')
@@ -22,98 +25,72 @@ model_choices = [('rf', 'Random Forest'),
 
 
 class ModelForm(FlaskForm):
-    model_class = SelectField('Model type', choices=model_choices,
-                              validators=[DataRequired()])
-    submit = SubmitField('Next')
+    model_type = SelectField('Model type', choices=model_choices,
+                             validators=[DataRequired()])
+    n_estimators = StringField('Number of estimators', validators=[DataRequired()])
+    learning_rate = StringField('Learning rate (leave blank for Random Forest)')
+    max_depth = StringField('Maximum tree depth', validators=[DataRequired()])
+    feature_subsample_size = StringField('Feature subsample size', validators=[DataRequired()])
+    submit = SubmitField('Create model!')
 
 
-class RFParamsForm(FlaskForm):
-    n_estimators = StringField('n_estimators', validators=[DataRequired()])
-    max_depth = StringField('max_depth', validators=[DataRequired()])
-    feature_subsample_size = StringField('feature_subsample_size', validators=[DataRequired()])
-    submit = SubmitField('Create model')
-
-
-class GBParamsForm(FlaskForm):
-    n_estimators = StringField('n_estimators', validators=[DataRequired()])
-    learning_rate = StringField('learning_rate', validators=[DataRequired()])
-    max_depth = StringField('max_depth', validators=[DataRequired()])
-    feature_subsample_size = StringField('feature_subsample_size', validators=[DataRequired()])
-    submit = SubmitField('Create model')
-
-
-class TrainingFileForm(FlaskForm):
-    file = FileField('Training file', validators=[DataRequired()])
-    submit = SubmitField('Train!')
-
-
-class FeaturesForm(FlaskForm):
+class TrainValForm(FlaskForm):
     num_features = StringField('Numerical features')
     bin_features = StringField('Binary features')
     cat_features = StringField('Categorical features')
+    train_file = FileField('Train file', validators=[DataRequired()])
+    val_file = FileField('Validation file')
+    submit = SubmitField('Train!')
 
 
-class TrainedModelMenuForm(FlaskForm):
-    val_file = FileField('Validation file', validators=[DataRequired()])
-    evaluate = SubmitField('Evaluate!')
-    test_file = FileField('Test file', validators=[DataRequired()])
+class TestForm(FlaskForm):
+    test_file = FileField('Test file')
     predict = SubmitField('Predict!')
 
 
 model = None
-model_class = None
 data_transformer = None
+train_dataset_name = None
+scores = None
 
 
 @app.route('/', methods=['GET', 'POST'])
-def choose_model():
+def model_creation_page():
     model_form = ModelForm()
 
     if model_form.validate_on_submit():
-        global model_class
-        model_class_name = model_form.model_class.data
-
-        if model_class_name == 'rf':
-            model_class = RandomForestMSE
-        elif model_class_name == 'gb':
-            model_class = GradientBoostingMSE
-        else:
-            raise ValueError('Invalid model class')
-
-        return redirect(url_for('choose_params'))
-    return render_template('from_form.html', form=model_form)
-
-
-@app.route('/params', methods=['GET', 'POST'])
-def choose_params():
-    if model_class == RandomForestMSE:
-        param_form = RFParamsForm()
-    else:
-        param_form = GBParamsForm()
-
-    if param_form.validate_on_submit():
-        model_params = {'n_estimators': int(param_form.n_estimators.data)}
-        if model_class == GradientBoostingMSE:
-            model_params['learning_rate'] = float(param_form.learning_rate.data)
-        model_params['max_depth'] = int(param_form.max_depth.data)
-        model_params['feature_subsample_size'] = int(param_form.feature_subsample_size.data)
+        model_params = {'n_estimators': int(model_form.n_estimators.data),
+                        'max_depth': int(model_form.max_depth.data),
+                        'feature_subsample_size': int(model_form.feature_subsample_size.data)}
+        model_type = model_form.model_type.data
         global model
-        model = model_class(**model_params)
-        return redirect(url_for('training'))
-    return render_template('from_form.html', form=param_form)
+        if model_type == 'rf':
+            model = RandomForestMSE(**model_params)
+        elif model_type == 'gb':
+            if not model_type.learning_rate.data:
+                raise ValueError()
+            model_params['learning_rate'] = float(model_type.learning_rate.data)
+            model = GradientBoostingMSE(**model_params)
+        else:
+            raise ValueError('Invalid model type')
+
+        return redirect(url_for('train_page'))
+    return render_template('model_creation_page.html', model_form=model_form)
 
 
-@app.route('/training', methods=['GET', 'POST'])
-def training():
-    training_file_form = TrainingFileForm()
-    features_form = FeaturesForm()
-    if features_form.validate_on_submit():
-        train_data = pd.read_csv(training_file_form.file.data)
+@app.route('/model', methods=['GET', 'POST'])
+def train_page():
+    train_val_form = TrainValForm()
+    if train_val_form.validate_on_submit():
+        global train_dataset_name
+        train_dataset_name = train_val_form.train_file.data.filename
+        train_data = pd.read_csv(train_val_form.train_file.data)
 
-        num_features = features_form.num_features.data.split(', ') if features_form.num_features.data else []
-        bin_features = features_form.bin_features.data.split(', ') if features_form.bin_features.data else []
-        cat_features = features_form.cat_features.data.split(', ') if features_form.cat_features.data else []
-        print(num_features, bin_features, cat_features)
+        num_features = train_val_form.num_features.data.split(', ') if train_val_form.num_features.data else []
+        bin_features = train_val_form.bin_features.data.split(', ') if train_val_form.bin_features.data else []
+        cat_features = train_val_form.cat_features.data.split(', ') if train_val_form.cat_features.data else []
+
+        global data_transformer
         if not num_features and not bin_features and not cat_features:
             data_transformer = DataPreprocessor(mode='auto')
         else:
@@ -124,39 +101,33 @@ def training():
         train_data = train_data.drop(columns=['target'])
         X_train = data_transformer.fit_transform(train_data)
 
-        model.fit(X_train, y_train)
+        global scores
+        if train_val_form.val_file.data:
+            val_data = pd.read_csv(train_val_form.val_file.data)
+            y_val = val_data['target'].to_numpy()
+            val_data = val_data.drop(columns=['target'])
+            X_val = data_transformer.transform(val_data)
+            scores = model.fit(X_train, y_train, X_val, y_val)
+        else:
+            scores = model.fit(X_train, y_train)
 
-        return redirect(url_for('trained_model_menu'))
-    return render_template('from_training_form.html',
-                           training_file_form=training_file_form,
-                           features_form=features_form)
+        return redirect(url_for('main_page'))
+    return render_template('train_page.html', params_dict=model.get_params(), train_val_form=train_val_form)
 
 
-@app.route('/trained_model_menu', methods=['GET', 'POST'])
-def trained_model_menu():
-    menu_form = TrainedModelMenuForm()
-    if menu_form.validate_on_submit():
-        if menu_form.predict.data:
-            X_test = pd.read_csv(menu_form.test_file.data)
-            y_pred = model.predict(X_test)
-            y_pred.to_csv('prediction.csv')
-            return send_file('prediction.csv', as_attachment=True)
-        elif menu_form.evaluate.data:
-            val_data = pd.read_csv(menu_form.val_file.data)
-            y_val = val_data['target']
-            X_val = val_data.drop(columns=['target'])
-            y_pred = model.predict(X_val)
-            redirect(url_for('evaluation'))
-    return render_template('from_form.html', form=menu_form)
+@app.route('/trained_model', methods=['GET', 'POST'])
+def main_page():
+    test_form = TestForm()
+    if test_form.validate_on_submit():
+        test_data = pd.read_csv(test_form.test_file.data)
+        X_test = data_transformer.transform(test_data)
+        y_pred = model.predict(X_test)
+        np.savetxt('prediction.txt', y_pred, delimiter='\n')
+        return send_file('prediction.txt', as_attachment=True)
+    return render_template('main_page.html', params_dict=model.get_params(),
+                           test_form=test_form, train_dataset_name=train_dataset_name)
 
 
 @app.route('/evaluation', methods=['GET', 'POST'])
-def evaluation():
-    training_file_form = TrainingFileForm()
-    if training_file_form.validate_on_submit():
-        training_data = pd.read_csv(training_file_form.file.data)
-        y_train = training_data['target']
-        X_train = training_data.drop(columns=['target'])
-        model.fit(X_train, y_train)
-        return redirect(url_for('trained_model_menu'))
-    return render_template('from_form.html', form=training_file_form)
+def eval_page():
+    return render_template('eval_page.html', scores=scores)
