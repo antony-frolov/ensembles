@@ -34,6 +34,11 @@ class RandomForestMSE:
         self.estimators = None
         self.feature_subsamples = None
 
+    def get_params(self):
+        return {'n_estimators': self.n_estimators,
+                'max_depth': self.max_depth,
+                'feature_subsample_size': self.feature_subsample_size}
+
     def fit(self, X, y, X_val=None, y_val=None):
         """
         X : numpy ndarray
@@ -135,6 +140,12 @@ class GradientBoostingMSE:
 
         self.estimators = None
         self.weights = None
+
+    def get_params(self):
+        return {'n_estimators': self.n_estimators,
+                'learning_rate': self.learning_rate,
+                'max_depth': self.max_depth,
+                'feature_subsample_size': self.feature_subsample_size}
 
     def fit(self, X, y, X_val=None, y_val=None):
         """
