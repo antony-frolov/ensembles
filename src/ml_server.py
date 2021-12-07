@@ -231,5 +231,9 @@ def eval_page():
 
     return render_template('eval_page.html', graph_div=fig.to_html(full_html=False),
                            train_rmse=f"{hist['train_rmse'][-1]:.2f}",
-                           test_rmse=f"{hist['val_rmse'][-1]:.2f}",
+                           test_rmse=f"{hist['val_rmse'][-1] if 'val_rmse' in hist else None:.2f}",
                            time=f"{hist['time'][-1]:.2f}")
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
