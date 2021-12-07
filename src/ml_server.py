@@ -68,9 +68,11 @@ def model_creation_page():
         try:
             n_estimators = int(model_form.n_estimators.data)
             max_depth = int(model_form.max_depth.data)
-            feature_subsample_size = int(model_form.feature_subsample_size.data)
-            if n_estimators <= 0 or max_depth <= 0 or feature_subsample_size <= 0:
+            feature_subsample_size = float(model_form.feature_subsample_size.data)
+            if n_estimators <= 0 or max_depth <= 0:
                 raise ValueError('Parameters must be positive')
+            if feature_subsample_size <= 0 or feature_subsample_size > 1:
+                raise ValueError('Feature subsample size must be from 0 to 1')
 
             model_params = {'n_estimators': n_estimators, 'max_depth': max_depth,
                             'feature_subsample_size': feature_subsample_size}
