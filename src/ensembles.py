@@ -55,11 +55,13 @@ class RandomForestMSE:
         if X_val is not None and y_val is not None:
             hist['val_rmse'] = []
 
+        features = np.arange((X.shape[1]))
+        feature_subsample_size = int(np.floor(X.shape[1] * self.feature_subsample_size))
+
         start_time = default_timer()
         for i in range(self.n_estimators):
             estimator = self.estimator()
-            features = np.arange((X.shape[1]))
-            feature_subsample_size = int(np.floor(X.shape[1] * self.feature_subsample_size))
+
             feature_subsample = np.random.permutation(features)[:feature_subsample_size]
             self.feature_subsamples.append(feature_subsample)
 
@@ -134,6 +136,7 @@ class GradientBoostingMSE:
         self.estimator = lambda: DecisionTreeRegressor(max_depth=max_depth, **trees_parameters)
 
         self.estimators = None
+        self.feature_subsamples = None
         self.weights = None
 
     def fit(self, X, y, X_val=None, y_val=None):
@@ -146,18 +149,27 @@ class GradientBoostingMSE:
         """
 
         self.estimators = []
+        self.feature_subsamples = []
         self.weights = []
+
         f = np.zeros((X.shape[0],))
         hist = {'n_estimators': [], 'time': [], 'train_rmse': []}
         if X_val is not None and y_val is not None:
             hist['val_rmse'] = []
 
+        features = np.arange((X.shape[1]))
+        feature_subsample_size = int(np.floor(X.shape[1] * self.feature_subsample_size))
+
         start_time = default_timer()
         for i in range(self.n_estimators):
             estimator = self.estimator()
+
+            feature_subsample = np.random.permutation(features)[:feature_subsample_size]
+            self.feature_subsamples.append(feature_subsample)
+
             gradient = 2 * (f - y)
-            estimator.fit(X, -gradient)
-            predictions = estimator.predict(X)
+            estimator.fit(X[:, feature_subsample], -gradient)
+            predictions = estimator.predict(X[:, feature_subsample])
             a = minimize_scalar(lambda a: np.sum((f + a * predictions - y) ** 2)).x
             self.weights.append(a)
             f = f + self.learning_rate * a * predictions
@@ -191,7 +203,7 @@ class GradientBoostingMSE:
 
         y_pred = np.zeros((X.shape[0],))
         for i, estimator in enumerate(self.estimators):
-            prediction = estimator.predict(X)
+            prediction = estimator.predict(X[:, self.feature_subsamples[i]])
             y_pred += self.learning_rate * self.weights[i] * prediction
 
         return y_pred
