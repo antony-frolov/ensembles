@@ -233,7 +233,7 @@ def eval_page():
 
     return render_template('eval_page.html', graph_div=fig.to_html(full_html=False),
                            train_rmse=f"{hist['train_rmse'][-1]:.2f}",
-                           test_rmse=f"{hist['val_rmse'][-1] if 'val_rmse' in hist else None:.2f}",
+                           test_rmse=f"{hist['val_rmse'][-1]:.2f}" if 'val_rmse' in hist else 'None',
                            time=f"{hist['time'][-1]:.2f}")
 
 
