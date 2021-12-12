@@ -186,6 +186,8 @@ def main_page():
 def eval_page():
     if not model:
         return render_template('no_model_page.html')
+    if not hist:
+        return render_template('ho_hist_page.html')
     # hist = {'train_rmse': [1, 2, 3], 'val_rmse': [2, 3, 4], 'time': [1, 2, 3], 'n_estimators': [1, 2, 3]}
 
     fig = plotly.subplots.make_subplots(rows=2, cols=1,
