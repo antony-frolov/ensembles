@@ -41,6 +41,7 @@ class TrainValForm(FlaskForm):
     num_features = StringField('Numerical features')
     bin_features = StringField('Binary features')
     cat_features = StringField('Categorical features')
+    target_feature = StringField('Target feature')
     train_file = FileField('Train file', validators=[DataRequired()])
     val_fraction = StringField('Validation fraction')
     val_file = FileField('Validation file')
@@ -57,6 +58,7 @@ data_transformer = None
 train_dataset_name = None
 val_dataset_name = None
 val_fraction = None
+target_feature = None
 hist = None
 
 
@@ -113,15 +115,17 @@ def train_page():
             bin_features = train_val_form.bin_features.data.split(', ') if train_val_form.bin_features.data else []
             cat_features = train_val_form.cat_features.data.split(', ') if train_val_form.cat_features.data else []
 
+            target_feature = train_val_form.target_feature.data or 'TARGET'
+
             global data_transformer
             if not num_features and not bin_features and not cat_features:
                 data_transformer = DataPreprocessor(mode='auto')
             else:
                 data_transformer = DataPreprocessor('manual', num_features, bin_features, cat_features)
 
-            y_train = train_data['target'].to_numpy()
+            y_train = train_data[target_feature].to_numpy()
 
-            train_data = train_data.drop(columns=['target'])
+            train_data = train_data.drop(columns=[target_feature])
             X_train = data_transformer.fit_transform(train_data)
 
             global hist
@@ -131,8 +135,8 @@ def train_page():
                 val_dataset_name = train_val_form.val_file.data.filename
                 val_fraction = 1
                 val_data = pd.read_csv(train_val_form.val_file.data)
-                y_val = val_data['target'].to_numpy()
-                val_data = val_data.drop(columns=['target'])
+                y_val = val_data[target_feature].to_numpy()
+                val_data = val_data.drop(columns=[target_feature])
                 X_val = data_transformer.transform(val_data)
                 hist = model.fit(X_train, y_train, X_val, y_val)
             elif train_val_form.val_fraction.data:
@@ -188,7 +192,6 @@ def eval_page():
         return render_template('no_model_page.html')
     if not hist:
         return render_template('no_hist_page.html')
-    # hist = {'train_rmse': [1, 2, 3], 'val_rmse': [2, 3, 4], 'time': [1, 2, 3], 'n_estimators': [1, 2, 3]}
 
     fig = plotly.subplots.make_subplots(rows=2, cols=1,
                                         subplot_titles=['Train and val RMSE for each iteration',
