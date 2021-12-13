@@ -4,11 +4,14 @@
 
 <div class="container">
     <h2>Statistics</h2>
-    <font size='+1'><p>
-        <div>Train RMSE = {{ train_rmse }}</div>
-        <div>Val RMSE = {{ test_rmse }}</div>
-        <div>Time = {{ time }}</div>
-    </p></font>
+    <font size='+1'>
+        <p>
+            <div>Train RMSE = {{ train_rmse }}</div>
+            <div>Val RMSE = {{ test_rmse }}</div>
+            <div>Time = {{ time }}</div>
+        </p>
+        <div><a href="{{ url_for('main_page') }}">Go back to main page</a></div>
+    </font>
 
     {{ graph_div|safe }}
 
