@@ -99,7 +99,7 @@ def model_creation_page():
     return render_template('model_creation_page.html', model_form=model_form, error=(repr(error) if error else None))
 
 
-@app.route('/model', methods=['GET', 'POST'])
+@app.route('/train', methods=['GET', 'POST'])
 def train_page():
     if not model:
         return render_template('no_model_page.html')
@@ -161,7 +161,7 @@ def train_page():
                            train_val_form=train_val_form, error=(repr(error) if error else None))
 
 
-@app.route('/trained_model', methods=['GET', 'POST'])
+@app.route('/model', methods=['GET', 'POST'])
 def main_page():
     if not model:
         return render_template('no_model_page.html')
