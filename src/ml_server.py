@@ -20,7 +20,6 @@ from sklearn.model_selection import train_test_split
 app = Flask(__name__, template_folder='html')
 app.config['BOOTSTRAP_SERVE_LOCAL'] = True
 app.config['SECRET_KEY'] = 'hello'
-data_path = './../data'
 Bootstrap(app)
 
 model_choices = [('rf', 'Random Forest'),
