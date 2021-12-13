@@ -32,7 +32,7 @@ class ModelForm(FlaskForm):
     n_estimators = StringField('Number of estimators', validators=[DataRequired()])
     learning_rate = StringField('Learning rate (leave blank for Random Forest)')
     max_depth = StringField('Maximum tree depth', validators=[DataRequired()])
-    feature_subsample_size = StringField('Feature subsample size', validators=[DataRequired()])
+    feature_subsample_size = StringField('Feature subsample size (float)', validators=[DataRequired()])
     submit = SubmitField('Create model!')
 
 
@@ -42,7 +42,7 @@ class TrainValForm(FlaskForm):
     cat_features = StringField('Categorical features')
     target_feature = StringField('Target feature')
     train_file = FileField('Train file', validators=[DataRequired()])
-    val_fraction = StringField('Validation fraction')
+    val_fraction = StringField('Validation fraction (float)')
     val_file = FileField('Validation file')
     submit = SubmitField('Train!')
 
