@@ -18,7 +18,7 @@ First you need to get the Docker container. There are to ways to do that:
     ```
 To run the Docker container execute `run.sh` script:
 ```zsh
-scripts/run.sh
+scripts/run.sh 5000
 ```
 Then connect to port 5000 ([click](http://127.0.0.1:5000/)).
 
