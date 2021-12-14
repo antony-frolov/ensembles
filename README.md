@@ -20,7 +20,12 @@ To run the Docker container execute `run.sh` script:
 ```zsh
 scripts/run.sh
 ```
-Then connect to port 5000 ([click](http://127.0.0.1:5000/)). (If port 5000 is not available, you can change it in `run.py` file)
+Then connect to port 5000 ([click](http://127.0.0.1:5000/)).
+
+If port 5000 is not available, you can change it by passing it as an argument to `run.sh`.
+```zsh
+scripts/run.sh <port>
+```
 
 **Make sure you have permissions to execute the scripts:**
 ```zsh
