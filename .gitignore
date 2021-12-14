@@ -2,3 +2,4 @@ test_ensembles.py
 prediction.txt
 report.tex
 report.synctex.gz
+plots/
