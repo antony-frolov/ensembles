@@ -1,5 +1,9 @@
 test_ensembles.py
 prediction.txt
+<<<<<<< HEAD
 report.tex
 report.synctex.gz
 plots/
+=======
+screenshots/
+>>>>>>> master
