@@ -1,7 +1,8 @@
+from timeit import default_timer
+
 import numpy as np
 from scipy.optimize import minimize_scalar
 from sklearn.tree import DecisionTreeRegressor
-from timeit import default_timer
 
 from metrics import rmse
 
