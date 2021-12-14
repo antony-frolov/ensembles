@@ -9,17 +9,23 @@ First you need to get the Docker container. There are to ways to do that:
     ```zsh
     scripts/build.sh
     ```
-2. Pull the container from [dockerhub.com](https://dockerhub.com).
+2. Pull the container from [dockerhub.com](https://dockerhub.com) and tag it.
     
     Choose `ml_server-amd64` or `ml_server-arm64` according to your architecture.
     ```zsh
     docker pull antonyfrolov/ensembles:ml_server-amd64
+    docker tag antonyfrolov/ensembles:ml_server-amd64 ml_server
     ```
 To run the Docker container execute `run.sh` script:
 ```zsh
 scripts/run.sh
 ```
-Then connect to port 5000 ([click](http://127.0.0.1:5000/)). (If port 5000 is not available, you can change it in `run.py` file)
+Then connect to port 5000 ([click](http://127.0.0.1:5000/)).
+
+If port 5000 is not available, you can change it by passing it as an argument to `run.sh`.
+```zsh
+scripts/run.sh <port>
+```
 
 **Make sure you have permissions to execute the scripts:**
 ```zsh
