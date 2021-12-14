@@ -9,11 +9,12 @@ First you need to get the Docker container. There are to ways to do that:
     ```zsh
     scripts/build.sh
     ```
-2. Pull the container from [dockerhub.com](https://dockerhub.com).
+2. Pull the container from [dockerhub.com](https://dockerhub.com) and tag it.
     
     Choose `ml_server-amd64` or `ml_server-arm64` according to your architecture.
     ```zsh
     docker pull antonyfrolov/ensembles:ml_server-amd64
+    docker tag antonyfrolov/ensembles:ml_server-amd64 ml_server
     ```
 To run the Docker container execute `run.sh` script:
 ```zsh
