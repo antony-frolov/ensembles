@@ -62,3 +62,7 @@ The evaluation page consists of two graphs:
 2. Total training time for each number of estimators.
 
 Also there you can find best train and validation RMSE values and total training time.
+
+## Data samples
+
+You can find some data samples for training and making predictions in the `data` folder.
