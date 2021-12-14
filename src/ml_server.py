@@ -1,4 +1,4 @@
-from flask import Flask, url_for, render_template, redirect, send_file, flash
+from flask import Flask, url_for, render_template, redirect, send_file
 from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
 from wtforms.validators import DataRequired
@@ -9,12 +9,11 @@ import numpy as np
 import plotly
 import plotly.subplots
 import plotly.graph_objects as go
+from sklearn.model_selection import train_test_split
+
 
 from ensembles import RandomForestMSE, GradientBoostingMSE
 from utils import DataPreprocessor
-
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
 
 
 app = Flask(__name__, template_folder='html')
@@ -57,7 +56,6 @@ data_transformer = None
 train_dataset_name = None
 val_dataset_name = None
 val_fraction = None
-target_feature = None
 hist = None
 
 
