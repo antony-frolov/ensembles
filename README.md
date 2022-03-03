@@ -44,7 +44,7 @@ Next page allows you to upload a training dataset and an optional validation dat
 
 The default name for target feature is `TARGET`, but you can specify another one in **Target feature** field.
 
-Auto-preprocessing treats all float features as numeric, binary integer features as binary and all other features as categorical.
+Auto-preprocessing treats all float features and integer features with more then two unique values as numeric, binary integer features as binary and all other features as categorical.
 You can specify types of features yourself in the fields above. To do that provide lists of feature names separated by `', '`.
 
 ### Main page
